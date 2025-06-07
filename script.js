@@ -1,7 +1,12 @@
-document.addEventListener('DOMContentLoaded', function () {
+document.addEventListener('DOMContentLoaded', async function () {
+    // Configuración de Supabase
+    const supabaseUrl = 'https://wcvqfkavoqmkwyhxzesr.supabase.co';
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndjdnFma2F2b3Fta3d5aHh6ZXNyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDkyNTk0ODEsImV4cCI6MjA2NDgzNTQ4MX0.1R8fc9-3IFXIGVWjfwcy-fyRaAsy76PUCPG8-Nsw_8g';
+    const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+    
     // Variables
-    let vehiculos = JSON.parse(localStorage.getItem('vehiculos')) || [];
-    let configuracion = JSON.parse(localStorage.getItem('configuracion')) || {
+    let vehiculos = [];
+    let configuracion = {
         totalEspacios: 24,
         tarifaPorHora: 10
     };
@@ -10,6 +15,8 @@ document.addEventListener('DOMContentLoaded', function () {
     let tarifaPorHora = configuracion.tarifaPorHora;
     let espacioSeleccionado = null;
 
+    // Cargar datos iniciales
+    await cargarDatosIniciales();
     generarMapaEstacionamiento();
 
     // Elementos del DOM
@@ -28,6 +35,64 @@ document.addEventListener('DOMContentLoaded', function () {
     const ingresosHoyEl = document.getElementById('ingresos-hoy');
     const promedioTiempoEl = document.getElementById('promedio-tiempo');
     const pendientesPagoEl = document.getElementById('pendientes-pago');
+
+    // Función para cargar datos iniciales desde Supabase
+    async function cargarDatosIniciales() {
+        try {
+            // Cargar vehículos
+            const { data: vehiculosData, error: vehiculosError } = await supabase
+                .from('vehiculos')
+                .select('*');
+            
+            if (!vehiculosError) {
+                vehiculos = vehiculosData || [];
+            } else {
+                console.error('Error cargando vehículos:', vehiculosError);
+                showAlert('error', 'Error al cargar los vehículos');
+            }
+            
+            // Cargar configuración
+            const { data: configData, error: configError } = await supabase
+                .from('configuracion')
+                .select('*')
+                .single();
+            
+            if (!configError && configData) {
+                configuracion = configData;
+                totalEspacios = configuracion.total_espacios || 24;
+                tarifaPorHora = configuracion.tarifa_por_hora || 10;
+            } else {
+                console.error('Error cargando configuración:', configError);
+                // Crear configuración inicial si no existe
+                await crearConfiguracionInicial();
+            }
+        } catch (error) {
+            console.error('Error inicial:', error);
+            showAlert('error', 'Error al cargar los datos iniciales');
+        }
+    }
+    
+    // Función para crear configuración inicial
+    async function crearConfiguracionInicial() {
+        const { data, error } = await supabase
+            .from('configuracion')
+            .insert([
+                { 
+                    total_espacios: 24, 
+                    tarifa_por_hora: 10 
+                }
+            ])
+            .select()
+            .single();
+            
+        if (!error && data) {
+            configuracion = data;
+            totalEspacios = configuracion.total_espacios;
+            tarifaPorHora = configuracion.tarifa_por_hora;
+        } else {
+            console.error('Error creando configuración:', error);
+        }
+    }
 
     // Actualizar hora actual cada segundo
     function updateCurrentTime() {
@@ -81,12 +146,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Función para cargar configuración
     function cargarConfiguracion() {
-        document.getElementById('total-espacios').value = configuracion.totalEspacios;
-        document.getElementById('tarifa-hora').value = configuracion.tarifaPorHora;
+        document.getElementById('total-espacios').value = configuracion.total_espacios;
+        document.getElementById('tarifa-hora').value = configuracion.tarifa_por_hora;
     }
 
     // Registrar entrada de vehículo
-    formEntrada.addEventListener('submit', function (e) {
+    formEntrada.addEventListener('submit', async function (e) {
         e.preventDefault();
 
         if (!espacioSeleccionado) {
@@ -101,39 +166,66 @@ document.addEventListener('DOMContentLoaded', function () {
         const conductor = document.getElementById('conductor').value;
         const horaEntrada = new Date();
 
-        // Verificar si ya existe un vehículo con la misma placa estacionado
-        const vehiculoExistente = vehiculos.find(v => v.placa === placa && v.estado === 'estacionado');
-        if (vehiculoExistente) {
-            showAlert('error', `Ya hay un vehículo con placa ${placa} estacionado.`);
-            return;
+        try {
+            // Verificar si ya existe un vehículo con la misma placa estacionado
+            const { data: vehiculoExistente, error: existenteError } = await supabase
+                .from('vehiculos')
+                .select('*')
+                .eq('placa', placa)
+                .eq('estado', 'estacionado')
+                .maybeSingle();
+            
+            if (vehiculoExistente) {
+                showAlert('error', `Ya hay un vehículo con placa ${placa} estacionado.`);
+                return;
+            }
+
+            // Verificar si el espacio ya está ocupado
+            const { data: espacioOcupado, error: espacioError } = await supabase
+                .from('vehiculos')
+                .select('*')
+                .eq('espacio', espacioSeleccionado)
+                .eq('estado', 'estacionado')
+                .maybeSingle();
+            
+            if (espacioOcupado) {
+                showAlert('error', `El espacio ${espacioSeleccionado} ya está ocupado.`);
+                return;
+            }
+
+            // Insertar nuevo vehículo
+            const { data: nuevoVehiculo, error: insertError } = await supabase
+                .from('vehiculos')
+                .insert([
+                    {
+                        placa,
+                        marca,
+                        modelo,
+                        color,
+                        conductor,
+                        espacio: espacioSeleccionado,
+                        hora_entrada: horaEntrada.toISOString(),
+                        estado: 'estacionado'
+                    }
+                ])
+                .select()
+                .single();
+            
+            if (!insertError && nuevoVehiculo) {
+                vehiculos.push(nuevoVehiculo);
+                showAlert('success', `Vehículo con placa ${placa} registrado en espacio ${espacioSeleccionado}.`);
+                formEntrada.reset();
+                espacioSeleccionado = null;
+                generarMapaEstacionamiento();
+                actualizarEstadisticas();
+            } else {
+                console.error('Error insertando vehículo:', insertError);
+                showAlert('error', 'Error al registrar el vehículo');
+            }
+        } catch (error) {
+            console.error('Error en registro de entrada:', error);
+            showAlert('error', 'Error al registrar el vehículo');
         }
-
-        // Verificar si el espacio ya está ocupado
-        const espacioOcupado = vehiculos.find(v => v.espacio === espacioSeleccionado && v.estado === 'estacionado');
-        if (espacioOcupado) {
-            showAlert('error', `El espacio ${espacioSeleccionado} ya está ocupado.`);
-            return;
-        }
-
-        const vehiculo = {
-            placa,
-            marca,
-            modelo,
-            color,
-            conductor,
-            espacio: espacioSeleccionado,
-            horaEntrada: horaEntrada.getTime(),
-            estado: 'estacionado'
-        };
-
-        vehiculos.push(vehiculo);
-        guardarEnLocalStorage();
-
-        showAlert('success', `Vehículo con placa ${placa} registrado en espacio ${espacioSeleccionado}.`);
-        formEntrada.reset();
-        espacioSeleccionado = null;
-        generarMapaEstacionamiento();
-        actualizarEstadisticas();
     });
 
     // Generar mapa de estacionamiento
@@ -190,124 +282,203 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // Buscar vehículo para salida
-    buscarPlacaBtn.addEventListener('click', function () {
+    buscarPlacaBtn.addEventListener('click', async function () {
         const placa = placaSalidaInput.value.toUpperCase();
-        const vehiculo = vehiculos.find(v => v.placa === placa && v.estado === 'estacionado');
+        
+        try {
+            const { data: vehiculo, error } = await supabase
+                .from('vehiculos')
+                .select('*')
+                .eq('placa', placa)
+                .eq('estado', 'estacionado')
+                .maybeSingle();
+            
+            if (error || !vehiculo) {
+                showAlert('error', 'No se encontró un vehículo estacionado con esa placa.');
+                previewPago.classList.add('hidden');
+                return;
+            }
 
-        if (!vehiculo) {
-            showAlert('error', 'No se encontró un vehículo estacionado con esa placa.');
-            previewPago.classList.add('hidden');
-            return;
+            // Calcular previsualización de pago
+            const horaSalida = new Date();
+            const horaEntrada = new Date(vehiculo.hora_entrada);
+            const tiempoEstacionadoMs = horaSalida.getTime() - horaEntrada.getTime();
+            const tiempoEstacionadoHoras = tiempoEstacionadoMs / (1000 * 60 * 60);
+            const totalPagar = Math.ceil(tiempoEstacionadoHoras) * tarifaPorHora;
+
+            // Mostrar previsualización
+            document.getElementById('preview-hora-entrada').textContent = horaEntrada.toLocaleTimeString();
+            document.getElementById('preview-hora-salida').textContent = horaSalida.toLocaleTimeString();
+            document.getElementById('preview-tiempo').textContent = `${tiempoEstacionadoHoras.toFixed(2)} horas`;
+            document.getElementById('preview-total').textContent = `$${totalPagar.toFixed(2)}`;
+
+            previewPago.classList.remove('hidden');
+        } catch (error) {
+            console.error('Error buscando vehículo:', error);
+            showAlert('error', 'Error al buscar el vehículo');
         }
-
-        // Calcular previsualización de pago
-        const horaSalida = new Date();
-        const horaEntrada = new Date(vehiculo.horaEntrada);
-        const tiempoEstacionadoMs = horaSalida.getTime() - horaEntrada.getTime();
-        const tiempoEstacionadoHoras = tiempoEstacionadoMs / (1000 * 60 * 60);
-        const totalPagar = Math.ceil(tiempoEstacionadoHoras) * tarifaPorHora;
-
-        // Mostrar previsualización
-        document.getElementById('preview-hora-entrada').textContent = horaEntrada.toLocaleTimeString();
-        document.getElementById('preview-hora-salida').textContent = horaSalida.toLocaleTimeString();
-        document.getElementById('preview-tiempo').textContent = `${tiempoEstacionadoHoras.toFixed(2)} horas`;
-        document.getElementById('preview-total').textContent = `$${totalPagar.toFixed(2)}`;
-
-        previewPago.classList.remove('hidden');
     });
 
     // Registrar salida de vehículo
-    formSalida.addEventListener('submit', function (e) {
+    formSalida.addEventListener('submit', async function (e) {
         e.preventDefault();
 
         const placa = placaSalidaInput.value.toUpperCase();
         const pagado = document.getElementById('pagado').value;
-        const vehiculoIndex = vehiculos.findIndex(v => v.placa === placa && v.estado === 'estacionado');
+        
+        try {
+            // Obtener el vehículo
+            const { data: vehiculo, error: getError } = await supabase
+                .from('vehiculos')
+                .select('*')
+                .eq('placa', placa)
+                .eq('estado', 'estacionado')
+                .maybeSingle();
+            
+            if (getError || !vehiculo) {
+                showAlert('error', 'No se encontró un vehículo estacionado con esa placa.');
+                return;
+            }
 
-        if (vehiculoIndex === -1) {
-            showAlert('error', 'No se encontró un vehículo estacionado con esa placa.');
-            return;
+            const horaSalida = new Date();
+            const horaEntrada = new Date(vehiculo.hora_entrada);
+            const tiempoEstacionadoMs = horaSalida.getTime() - horaEntrada.getTime();
+            const tiempoEstacionadoHoras = tiempoEstacionadoMs / (1000 * 60 * 60);
+            const totalPagar = Math.ceil(tiempoEstacionadoHoras) * tarifaPorHora;
+
+            // Actualizar vehículo
+            const { data: updatedVehiculo, error: updateError } = await supabase
+                .from('vehiculos')
+                .update({
+                    hora_salida: horaSalida.toISOString(),
+                    tiempo_estacionado_horas: tiempoEstacionadoHoras,
+                    total_pagar: totalPagar,
+                    pagado: pagado === 'si',
+                    estado: 'salio'
+                })
+                .eq('id', vehiculo.id)
+                .select()
+                .single();
+            
+            if (!updateError && updatedVehiculo) {
+                // Actualizar lista local
+                const index = vehiculos.findIndex(v => v.id === vehiculo.id);
+                if (index !== -1) {
+                    vehiculos[index] = updatedVehiculo;
+                }
+                
+                showAlert('success', `Salida registrada para placa ${placa}. Total: $${totalPagar.toFixed(2)}`);
+                formSalida.reset();
+                previewPago.classList.add('hidden');
+                actualizarTablaVehiculos();
+                actualizarEstadisticas();
+                generarMapaEstacionamiento();
+            } else {
+                console.error('Error actualizando vehículo:', updateError);
+                showAlert('error', 'Error al registrar la salida');
+            }
+        } catch (error) {
+            console.error('Error en registro de salida:', error);
+            showAlert('error', 'Error al registrar la salida');
         }
-
-        const horaSalida = new Date();
-        const horaEntrada = new Date(vehiculos[vehiculoIndex].horaEntrada);
-        const tiempoEstacionadoMs = horaSalida.getTime() - horaEntrada.getTime();
-        const tiempoEstacionadoHoras = tiempoEstacionadoMs / (1000 * 60 * 60);
-        const totalPagar = Math.ceil(tiempoEstacionadoHoras) * tarifaPorHora;
-
-        // Actualizar vehículo
-        vehiculos[vehiculoIndex].horaSalida = horaSalida.getTime();
-        vehiculos[vehiculoIndex].tiempoEstacionadoHoras = tiempoEstacionadoHoras;
-        vehiculos[vehiculoIndex].totalPagar = totalPagar;
-        vehiculos[vehiculoIndex].pagado = pagado === 'si';
-        vehiculos[vehiculoIndex].estado = 'salio';
-
-        guardarEnLocalStorage();
-
-        showAlert('success', `Salida registrada para placa ${placa}. Total: $${totalPagar.toFixed(2)}`);
-        formSalida.reset();
-        previewPago.classList.add('hidden');
-        actualizarTablaVehiculos();
-        actualizarEstadisticas();
-        generarMapaEstacionamiento();
     });
 
     // Función para actualizar la tabla de vehículos
-    function actualizarTablaVehiculos() {
-        tablaVehiculos.innerHTML = '';
+    async function actualizarTablaVehiculos() {
+        try {
+            const { data: vehiculosEstacionados, error } = await supabase
+                .from('vehiculos')
+                .select('*')
+                .eq('estado', 'estacionado');
+            
+            if (error) {
+                console.error('Error cargando vehículos:', error);
+                showAlert('error', 'Error al cargar los vehículos');
+                return;
+            }
+            
+            tablaVehiculos.innerHTML = '';
 
-        const vehiculosEstacionados = vehiculos.filter(v => v.estado === 'estacionado');
+            if (vehiculosEstacionados.length === 0) {
+                const row = document.createElement('tr');
+                row.innerHTML = `<td colspan="7" style="text-align: center;">No hay vehículos estacionados</td>`;
+                tablaVehiculos.appendChild(row);
+                return;
+            }
 
-        if (vehiculosEstacionados.length === 0) {
-            const row = document.createElement('tr');
-            row.innerHTML = `<td colspan="7" style="text-align: center;">No hay vehículos estacionados</td>`;
-            tablaVehiculos.appendChild(row);
-            return;
+            vehiculosEstacionados.forEach(vehiculo => {
+                const row = document.createElement('tr');
+                const horaEntrada = new Date(vehiculo.hora_entrada);
+
+                row.innerHTML = `
+                    <td>${vehiculo.placa}</td>
+                    <td>${vehiculo.marca}</td>
+                    <td>${vehiculo.modelo}</td>
+                    <td>${vehiculo.color}</td>
+                    <td>${vehiculo.conductor}</td>
+                    <td>${horaEntrada.toLocaleTimeString()}</td>
+                    <td><span class="badge badge-success">Estacionado</span></td>
+                `;
+
+                tablaVehiculos.appendChild(row);
+            });
+        } catch (error) {
+            console.error('Error actualizando tabla:', error);
+            showAlert('error', 'Error al cargar los vehículos');
         }
-
-        vehiculosEstacionados.forEach(vehiculo => {
-            const row = document.createElement('tr');
-            const horaEntrada = new Date(vehiculo.horaEntrada);
-
-            row.innerHTML = `
-                <td>${vehiculo.placa}</td>
-                <td>${vehiculo.marca}</td>
-                <td>${vehiculo.modelo}</td>
-                <td>${vehiculo.color}</td>
-                <td>${vehiculo.conductor}</td>
-                <td>${horaEntrada.toLocaleTimeString()}</td>
-                <td><span class="badge badge-success">Estacionado</span></td>
-            `;
-
-            tablaVehiculos.appendChild(row);
-        });
     }
 
     // Función para actualizar estadísticas
-    function actualizarEstadisticas() {
-        // Vehículos activos
-        const vehiculosActivos = vehiculos.filter(v => v.estado === 'estacionado').length;
-        vehiculosActivosEl.textContent = vehiculosActivos;
+    async function actualizarEstadisticas() {
+        try {
+            // Vehículos activos
+            const { count: vehiculosActivos, error: activosError } = await supabase
+                .from('vehiculos')
+                .select('*', { count: 'exact' })
+                .eq('estado', 'estacionado');
+            
+            if (!activosError) {
+                vehiculosActivosEl.textContent = vehiculosActivos || 0;
+            }
+            
+            // Ingresos hoy
+            const hoy = new Date();
+            hoy.setHours(0, 0, 0, 0);
+            
+            const { data: ingresosData, error: ingresosError } = await supabase
+                .from('vehiculos')
+                .select('total_pagar')
+                .eq('estado', 'salio')
+                .gte('hora_salida', hoy.toISOString())
+                .eq('pagado', true);
+            
+            if (!ingresosError) {
+                const ingresosHoy = ingresosData.reduce((sum, v) => sum + (v.total_pagar || 0), 0);
+                ingresosHoyEl.textContent = `$${ingresosHoy.toFixed(2)}`;
+            }
+            
+            // Tiempo promedio y pagos pendientes
+            const { data: tiemposData, error: tiemposError } = await supabase
+                .from('vehiculos')
+                .select('tiempo_estacionado_horas, pagado')
+                .eq('estado', 'salio');
+            
+            if (!tiemposError) {
+                // Tiempo promedio
+                const tiempos = tiemposData.map(v => v.tiempo_estacionado_horas || 0);
+                const promedio = tiempos.length > 0
+                    ? (tiempos.reduce((a, b) => a + b, 0) / tiempos.length)
+                    : 0;
+                promedioTiempoEl.textContent = `${promedio.toFixed(2)}h`;
 
-        // Ingresos hoy
-        const hoy = new Date().setHours(0, 0, 0, 0);
-        const ingresosHoy = vehiculos
-            .filter(v => v.estado === 'salio' && new Date(v.horaSalida) >= hoy && v.pagado)
-            .reduce((sum, v) => sum + v.totalPagar, 0);
-        ingresosHoyEl.textContent = `$${ingresosHoy.toFixed(2)}`;
-
-        // Tiempo promedio
-        const tiempos = vehiculos
-            .filter(v => v.estado === 'salio')
-            .map(v => v.tiempoEstacionadoHoras);
-        const promedio = tiempos.length > 0 ?
-            (tiempos.reduce((a, b) => a + b, 0) / tiempos.length).toFixed(2) : 0;
-        promedioTiempoEl.textContent = `${promedio}h`;
-
-        // Pagos pendientes
-        const pendientes = vehiculos
-            .filter(v => v.estado === 'salio' && !v.pagado).length;
-        pendientesPagoEl.textContent = pendientes;
+                // Pagos pendientes
+                const pendientes = tiemposData.filter(v => !v.pagado).length;
+                pendientesPagoEl.textContent = pendientes;
+            }
+        } catch (error) {
+            console.error('Error actualizando estadísticas:', error);
+            showAlert('error', 'Error al cargar las estadísticas');
+        }
     }
 
     // Mostrar notificación
@@ -340,50 +511,78 @@ document.addEventListener('DOMContentLoaded', function () {
         }, 5000);
     }
 
-    // Guardar en localStorage
-    function guardarEnLocalStorage() {
-        localStorage.setItem('vehiculos', JSON.stringify(vehiculos));
-        localStorage.setItem('configuracion', JSON.stringify(configuracion));
-    }
-
     // Manejo de eliminación de datos
-    document.getElementById('btn-eliminar').addEventListener('click', function() {
+    document.getElementById('btn-eliminar').addEventListener('click', async function() {
         const tipo = document.getElementById('tipo-eliminacion').value;
         
-        if (tipo === 'todo') {
-            if (confirm('¿Está seguro que desea eliminar TODOS los registros? Esta acción no se puede deshacer.')) {
-                vehiculos = [];
-                localStorage.setItem('vehiculos', JSON.stringify(vehiculos));
-                showAlert('success', 'Todos los registros han sido eliminados');
-                actualizarTablaVehiculos();
-                generarMapaEstacionamiento();
-                actualizarEstadisticas();
+        try {
+            if (tipo === 'todo') {
+                if (confirm('¿Está seguro que desea eliminar TODOS los registros? Esta acción no se puede deshacer.')) {
+                    const { error } = await supabase
+                        .from('vehiculos')
+                        .delete()
+                        .neq('id', 0); // Elimina todos los registros
+                    
+                    if (!error) {
+                        vehiculos = [];
+                        showAlert('success', 'Todos los registros han sido eliminados');
+                        actualizarTablaVehiculos();
+                        generarMapaEstacionamiento();
+                        actualizarEstadisticas();
+                    } else {
+                        console.error('Error eliminando registros:', error);
+                        showAlert('error', 'Error al eliminar los registros');
+                    }
+                }
+            } else if (tipo === 'salidos') {
+                const { error } = await supabase
+                    .from('vehiculos')
+                    .delete()
+                    .eq('estado', 'salio');
+                
+                if (!error) {
+                    vehiculos = vehiculos.filter(v => v.estado === 'estacionado');
+                    showAlert('success', 'Registros de vehículos salidos eliminados');
+                    actualizarTablaVehiculos();
+                    generarMapaEstacionamiento();
+                    actualizarEstadisticas();
+                } else {
+                    console.error('Error eliminando registros:', error);
+                    showAlert('error', 'Error al eliminar los registros');
+                }
+            } else if (tipo === 'antiguos') {
+                const limite = new Date();
+                limite.setDate(limite.getDate() - 30);
+                
+                const { error } = await supabase
+                    .from('vehiculos')
+                    .delete()
+                    .eq('estado', 'salio')
+                    .lt('hora_salida', limite.toISOString());
+                
+                if (!error) {
+                    vehiculos = vehiculos.filter(v => {
+                        if (v.estado === 'estacionado') return true;
+                        const fechaSalida = new Date(v.hora_salida);
+                        return fechaSalida > limite;
+                    });
+                    showAlert('success', 'Registros antiguos eliminados');
+                    actualizarTablaVehiculos();
+                    generarMapaEstacionamiento();
+                    actualizarEstadisticas();
+                } else {
+                    console.error('Error eliminando registros:', error);
+                    showAlert('error', 'Error al eliminar los registros');
+                }
             }
-        } else if (tipo === 'salidos') {
-            vehiculos = vehiculos.filter(v => v.estado === 'estacionado');
-            localStorage.setItem('vehiculos', JSON.stringify(vehiculos));
-            showAlert('success', 'Registros de vehículos salidos eliminados');
-            actualizarTablaVehiculos();
-            generarMapaEstacionamiento();
-            actualizarEstadisticas();
-        } else if (tipo === 'antiguos') {
-            const limite = new Date();
-            limite.setDate(limite.getDate() - 30);
-            vehiculos = vehiculos.filter(v => {
-                if (v.estado === 'estacionado') return true;
-                const fechaSalida = new Date(v.horaSalida);
-                return fechaSalida > limite;
-            });
-            localStorage.setItem('vehiculos', JSON.stringify(vehiculos));
-            showAlert('success', 'Registros antiguos eliminados');
-            actualizarTablaVehiculos();
-            generarMapaEstacionamiento();
-            actualizarEstadisticas();
+        } catch (error) {
+            console.error('Error en eliminación:', error);
+            showAlert('error', 'Error al eliminar los registros');
         }
     });
 
     // Configuración de espacios
-    document.getElementById('btn-guardar-espacios').addEventListener('click', function() {
+    document.getElementById('btn-guardar-espacios').addEventListener('click', async function() {
         const nuevosEspacios = parseInt(document.getElementById('total-espacios').value);
         
         if (nuevosEspacios < 1) {
@@ -392,21 +591,41 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         
         // Verificar que no haya más vehículos estacionados que el nuevo total
-        const vehiculosEstacionados = vehiculos.filter(v => v.estado === 'estacionado').length;
-        if (vehiculosEstacionados > nuevosEspacios) {
+        const { count: vehiculosEstacionados, error: countError } = await supabase
+            .from('vehiculos')
+            .select('*', { count: 'exact' })
+            .eq('estado', 'estacionado');
+        
+        if (countError || (vehiculosEstacionados && vehiculosEstacionados > nuevosEspacios)) {
             showAlert('error', `No puede reducir a ${nuevosEspacios} espacios porque hay ${vehiculosEstacionados} vehículos estacionados`);
             return;
         }
         
-        configuracion.totalEspacios = nuevosEspacios;
-        totalEspacios = nuevosEspacios;
-        localStorage.setItem('configuracion', JSON.stringify(configuracion));
-        showAlert('success', `Configuración guardada: ${nuevosEspacios} espacios totales`);
-        generarMapaEstacionamiento();
+        try {
+            const { data, error } = await supabase
+                .from('configuracion')
+                .update({ total_espacios: nuevosEspacios })
+                .eq('id', configuracion.id)
+                .select()
+                .single();
+            
+            if (!error && data) {
+                configuracion = data;
+                totalEspacios = configuracion.total_espacios;
+                showAlert('success', `Configuración guardada: ${nuevosEspacios} espacios totales`);
+                generarMapaEstacionamiento();
+            } else {
+                console.error('Error actualizando configuración:', error);
+                showAlert('error', 'Error al guardar la configuración');
+            }
+        } catch (error) {
+            console.error('Error en configuración:', error);
+            showAlert('error', 'Error al guardar la configuración');
+        }
     });
 
     // Configuración de tarifa
-    document.getElementById('btn-guardar-tarifa').addEventListener('click', function() {
+    document.getElementById('btn-guardar-tarifa').addEventListener('click', async function() {
         const nuevaTarifa = parseFloat(document.getElementById('tarifa-hora').value);
         
         if (nuevaTarifa <= 0) {
@@ -414,10 +633,26 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
         
-        configuracion.tarifaPorHora = nuevaTarifa;
-        tarifaPorHora = nuevaTarifa;
-        localStorage.setItem('configuracion', JSON.stringify(configuracion));
-        showAlert('success', `Tarifa actualizada: $${nuevaTarifa} por hora`);
+        try {
+            const { data, error } = await supabase
+                .from('configuracion')
+                .update({ tarifa_por_hora: nuevaTarifa })
+                .eq('id', configuracion.id)
+                .select()
+                .single();
+            
+            if (!error && data) {
+                configuracion = data;
+                tarifaPorHora = configuracion.tarifa_por_hora;
+                showAlert('success', `Tarifa actualizada: $${nuevaTarifa} por hora`);
+            } else {
+                console.error('Error actualizando tarifa:', error);
+                showAlert('error', 'Error al actualizar la tarifa');
+            }
+        } catch (error) {
+            console.error('Error en tarifa:', error);
+            showAlert('error', 'Error al actualizar la tarifa');
+        }
     });
 
     // Inicializar
