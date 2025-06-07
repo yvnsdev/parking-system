@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ParkHub Pro</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="icon" href="faviconv2.png" type="image/png">
+</head>
+
+<body>
+    <div class="dashboard">
+        <header class="header">
+            <div class="logo">
+                <img src="logov2.png" alt="ParkHub Pro Logo" class="logo-img">
+                <h1>ParkHub <span>Pro</span></h1>
+            </div>
+            <div class="time-display" id="current-time"></div>
+        </header>
+
+        <div class="container">
+            <nav class="sidebar">
+                <ul>
+                    <li class="active" data-tab="entrada">
+                        <i class="fas fa-car-side"></i>
+                        <span>Registrar Entrada</span>
+                    </li>
+                    <li data-tab="salida">
+                        <i class="fas fa-sign-out-alt"></i>
+                        <span>Registrar Salida</span>
+                    </li>
+                    <li data-tab="vehiculos">
+                        <i class="fas fa-list"></i>
+                        <span>Vehículos</span>
+                    </li>
+                    <li data-tab="reportes">
+                        <i class="fas fa-chart-bar"></i>
+                        <span>Reportes</span>
+                    </li>
+                    <li data-tab="configuracion">
+                        <i class="fas fa-cog"></i>
+                        <span>Configuración</span>
+                    </li>
+                </ul>
+            </nav>
+
+            <main class="main-content">
+                <div id="entrada" class="tab-content active">
+                    <div class="card">
+                        <h2><i class="fas fa-car"></i> Registrar Entrada de Vehículo</h2>
+                        <form id="form-entrada">
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label for="placa"><i class="fas fa-id-card"></i> Placa:</label>
+                                    <input type="text" id="placa" placeholder="ABC-1234" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="marca"><i class="fas fa-tag"></i> Marca:</label>
+                                    <input type="text" id="marca" placeholder="Toyota" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="modelo"><i class="fas fa-car-alt"></i> Modelo:</label>
+                                    <input type="text" id="modelo" placeholder="Corolla" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="color"><i class="fas fa-palette"></i> Color:</label>
+                                    <input type="text" id="color" placeholder="Rojo" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="conductor"><i class="fas fa-user"></i> Conductor:</label>
+                                    <input type="text" id="conductor" placeholder="Nombre completo" required>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn-primary">
+                                <i class="fas fa-check-circle"></i> Registrar Entrada
+                            </button>
+                        </form>
+                        <div class="parking-map-container">
+                            <h3><i class="fas fa-map-marked-alt"></i> Mapa del Estacionamiento</h3>
+                            <div class="parking-map" id="parking-map">
+                                <!-- Los espacios se generarán dinámicamente con JS -->
+                            </div>
+                            <div class="parking-legend">
+                                <div class="legend-item">
+                                    <div class="color-box available"></div>
+                                    <span>Disponible</span>
+                                </div>
+                                <div class="legend-item">
+                                    <div class="color-box occupied"></div>
+                                    <span>Ocupado</span>
+                                </div>
+                                <div class="legend-item">
+                                    <div class="color-box selected"></div>
+                                    <span>Seleccionado</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="salida" class="tab-content">
+                    <div class="card">
+                        <h2><i class="fas fa-sign-out-alt"></i> Registrar Salida de Vehículo</h2>
+                        <form id="form-salida">
+                            <div class="form-group">
+                                <label for="placa-salida"><i class="fas fa-id-card"></i> Placa:</label>
+                                <div class="input-with-button">
+                                    <input type="text" id="placa-salida" placeholder="Ingrese la placa" required>
+                                    <button type="button" id="buscar-placa" class="btn-secondary">
+                                        <i class="fas fa-search"></i> Buscar
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div id="preview-pago" class="hidden">
+                                <div class="payment-preview">
+                                    <h3><i class="fas fa-receipt"></i> Resumen de Pago</h3>
+                                    <div class="payment-details">
+                                        <div class="detail">
+                                            <span>Hora de Entrada:</span>
+                                            <span id="preview-hora-entrada"></span>
+                                        </div>
+                                        <div class="detail">
+                                            <span>Hora de Salida:</span>
+                                            <span id="preview-hora-salida"></span>
+                                        </div>
+                                        <div class="detail">
+                                            <span>Tiempo Estacionado:</span>
+                                            <span id="preview-tiempo"></span>
+                                        </div>
+                                        <div class="detail total">
+                                            <span>Total a Pagar:</span>
+                                            <span id="preview-total">$0.00</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="pagado"><i class="fas fa-money-bill-wave"></i> Estado de Pago:</label>
+                                    <select id="pagado">
+                                        <option value="si">Pagado</option>
+                                        <option value="no">Pendiente</option>
+                                    </select>
+                                </div>
+
+                                <button type="submit" class="btn-primary">
+                                    <i class="fas fa-check-circle"></i> Confirmar Salida
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <div id="vehiculos" class="tab-content">
+                    <div class="card">
+                        <h2><i class="fas fa-list"></i> Vehículos Estacionados</h2>
+                        <div class="table-container">
+                            <table id="tabla-vehiculos">
+                                <thead>
+                                    <tr>
+                                        <th><i class="fas fa-id-card"></i> Placa</th>
+                                        <th><i class="fas fa-tag"></i> Marca</th>
+                                        <th><i class="fas fa-car-alt"></i> Modelo</th>
+                                        <th><i class="fas fa-palette"></i> Color</th>
+                                        <th><i class="fas fa-user"></i> Conductor</th>
+                                        <th><i class="fas fa-clock"></i> Hora Entrada</th>
+                                        <th><i class="fas fa-info-circle"></i> Estado</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Datos se llenarán con JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="reportes" class="tab-content">
+                    <div class="card">
+                        <h2><i class="fas fa-chart-bar"></i> Reportes y Estadísticas</h2>
+                        <div class="stats-grid">
+                            <div class="stat-card">
+                                <div class="stat-icon" style="background-color: #4e73df;">
+                                    <i class="fas fa-car"></i>
+                                </div>
+                                <div class="stat-info">
+                                    <h3 id="vehiculos-activos">0</h3>
+                                    <p>Vehículos activos</p>
+                                </div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-icon" style="background-color: #1cc88a;">
+                                    <i class="fas fa-money-bill-wave"></i>
+                                </div>
+                                <div class="stat-info">
+                                    <h3 id="ingresos-hoy">$0.00</h3>
+                                    <p>Ingresos hoy</p>
+                                </div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-icon" style="background-color: #f6c23e;">
+                                    <i class="fas fa-clock"></i>
+                                </div>
+                                <div class="stat-info">
+                                    <h3 id="promedio-tiempo">0h</h3>
+                                    <p>Tiempo promedio</p>
+                                </div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-icon" style="background-color: #e74a3b;">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                </div>
+                                <div class="stat-info">
+                                    <h3 id="pendientes-pago">0</h3>
+                                    <p>Pagos pendientes</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Agregar después de la pestaña de reportes -->
+                <div id="configuracion" class="tab-content">
+                    <div class="card">
+                        <h2><i class="fas fa-cog"></i> Configuración del Estacionamiento</h2>
+
+                        <div class="config-section">
+                            <h3><i class="fas fa-trash-alt"></i> Eliminar Registros</h3>
+                            <div class="form-group">
+                                <label>Seleccione qué eliminar:</label>
+                                <select id="tipo-eliminacion" class="form-control">
+                                    <option value="todo">Todos los registros</option>
+                                    <option value="salidos">Solo vehículos que ya salieron</option>
+                                    <option value="antiguos">Registros con más de 30 días</option>
+                                </select>
+                            </div>
+                            <button id="btn-eliminar" class="btn-danger">
+                                <i class="fas fa-trash"></i> Eliminar Registros Seleccionados
+                            </button>
+                            <div class="warning-message">
+                                <i class="fas fa-exclamation-triangle"></i> Esta acción no se puede deshacer
+                            </div>
+                        </div>
+
+                        <div class="config-section">
+                            <h3><i class="fas fa-expand"></i> Tamaño del Estacionamiento</h3>
+                            <div class="form-group">
+                                <label>Número total de espacios:</label>
+                                <input type="number" id="total-espacios" min="1" max="100" class="form-control"
+                                    value="24">
+                            </div>
+                            <button id="btn-guardar-espacios" class="btn-primary">
+                                <i class="fas fa-save"></i> Guardar Configuración
+                            </button>
+                        </div>
+
+                        <div class="config-section">
+                            <h3><i class="fas fa-money-bill-wave"></i> Tarifa por Hora</h3>
+                            <div class="form-group">
+                                <label>Tarifa actual ($ por hora):</label>
+                                <input type="number" id="tarifa-hora" min="1" step="0.5" class="form-control"
+                                    value="10">
+                            </div>
+                            <button id="btn-guardar-tarifa" class="btn-primary">
+                                <i class="fas fa-save"></i> Actualizar Tarifa
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
