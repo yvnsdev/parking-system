@@ -947,3 +947,30 @@ function mostrarTabLegal(id) {
     secciones.forEach(sec => sec.classList.remove('active'));
     document.getElementById(id).classList.add('active');
 }
+
+// Cookie Consent
+document.addEventListener('DOMContentLoaded', function() {
+    const cookieConsent = document.getElementById('cookie-consent');
+    const cookieAccept = document.getElementById('cookie-accept');
+    const cookieDecline = document.getElementById('cookie-decline');
+
+    // Verificar si ya se ha dado consentimiento
+    if (!localStorage.getItem('cookieConsent')) {
+        // Mostrar el banner después de 1 segundo
+        setTimeout(() => {
+            cookieConsent.classList.add('show');
+        }, 500);
+    }
+
+    // Manejar aceptación de cookies
+    cookieAccept.addEventListener('click', function() {
+        localStorage.setItem('cookieConsent', 'accepted');
+        cookieConsent.classList.remove('show');
+    });
+
+    // Manejar rechazo de cookies
+    cookieDecline.addEventListener('click', function() {
+        localStorage.setItem('cookieConsent', 'declined');
+        cookieConsent.classList.remove('show');
+    });
+});
