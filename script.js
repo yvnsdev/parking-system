@@ -547,15 +547,6 @@ function inicializarAplicacion() {
     setInterval(updateCurrentTime, 1000);
     updateCurrentTime();
 
-    // Agregar campo de espacio al formulario
-    const espacioInput = document.createElement('div');
-    espacioInput.className = 'form-group';
-    espacioInput.innerHTML = `
-        <label for="espacio"><i class="fas fa-map-marker-alt"></i> Espacio:</label>
-        <input type="text" id="espacio" placeholder="Seleccione un espacio" readonly>
-    `;
-    formEntrada.querySelector('.form-grid').appendChild(espacioInput);
-
     // Manejo de pestañas
     tabButtons.forEach(button => {
         button.addEventListener('click', () => {
