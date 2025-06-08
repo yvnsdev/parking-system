@@ -1,7 +1,7 @@
 // Credenciales válidas (en un sistema real, esto vendría de una base de datos)
 const USUARIOS_VALIDOS = [
-    { username: 'admin@parksys.cl', password: 'adminParkSys', nombre: 'Administrador' },
-    { username: 'operador@parksys.cl', password: 'operadorParkSys', nombre: 'Operador' }
+    { username: 'admin@prisma.cl', password: 'prisma2025', nombre: 'Administrador' },
+    { username: 'operador@parksys.cl', password: 'prisma2025', nombre: 'Operador' }
 ];
 
 // Función para inicializar la aplicación después del login
@@ -35,19 +35,43 @@ function inicializarAplicacion() {
     });
 
     const modelosPorMarca = {
-        toyota: ['Corolla', 'Camry', 'RAV4', 'Hilux', 'Yaris'],
-        ford: ['Focus', 'Fiesta', 'Mustang', 'Explorer', 'F-150'],
-        chevrolet: ['Cruze', 'Malibu', 'Camaro', 'Silverado', 'Equinox'],
-        honda: ['Civic', 'Accord', 'CR-V', 'Fit', 'Pilot'],
-        bmw: ['Serie 3', 'Serie 5', 'X3', 'X5', 'Z4'],
-        mercedes: ['Clase A', 'Clase C', 'Clase E', 'GLE', 'GLA'],
-        nissan: ['Sentra', 'Altima', 'Leaf', 'Rogue', 'Frontier'],
-        volkswagen: ['Golf', 'Polo', 'Passat', 'Tiguan', 'Jetta'],
-        audi: ['A3', 'A4', 'A6', 'Q5', 'Q7']
+        toyota: ['Corolla', 'Camry', 'RAV4', 'Hilux', 'Yaris', 'Land Cruiser'],
+        ford: ['Focus', 'Fiesta', 'Mustang', 'Explorer', 'F-150', 'Escape'],
+        chevrolet: ['Cruze', 'Malibu', 'Camaro', 'Silverado', 'Equinox', 'Tracker'],
+        honda: ['Civic', 'Accord', 'CR-V', 'Fit', 'Pilot', 'HR-V'],
+        bmw: ['Serie 1', 'Serie 3', 'Serie 5', 'X3', 'X5', 'Z4'],
+        mercedes: ['Clase A', 'Clase C', 'Clase E', 'GLE', 'GLA', 'GLC'],
+        nissan: ['Versa', 'Sentra', 'Altima', 'Leaf', 'Rogue', 'Frontier'],
+        volkswagen: ['Golf', 'Polo', 'Passat', 'Tiguan', 'Jetta', 'T-Cross'],
+        audi: ['A3', 'A4', 'A6', 'Q5', 'Q7', 'Q3'],
+        hyundai: ['Accent', 'Elantra', 'Tucson', 'Santa Fe', 'Kona', 'Creta'],
+        kia: ['Rio', 'Cerato', 'Sportage', 'Seltos', 'Sorento', 'Picanto'],
+        mazda: ['Mazda2', 'Mazda3', 'CX-3', 'CX-5', 'CX-9', 'MX-5'],
+        subaru: ['Impreza', 'Legacy', 'Forester', 'Outback', 'XV'],
+        peugeot: ['208', '308', '2008', '3008', '5008'],
+        renault: ['Logan', 'Sandero', 'Duster', 'Kwid', 'Captur'],
+        fiat: ['500', 'Panda', 'Tipo', 'Argo', 'Cronos', 'Toro'],
+        jeep: ['Renegade', 'Compass', 'Wrangler', 'Cherokee', 'Grand Cherokee'],
+        dodge: ['Challenger', 'Charger', 'Durango', 'Journey'],
+        ram: ['1500', '2500', '3500'],
+        tesla: ['Model S', 'Model 3', 'Model X', 'Model Y', 'Cybertruck'],
+        volvo: ['S60', 'S90', 'XC40', 'XC60', 'XC90'],
+        mitsubishi: ['Mirage', 'Lancer', 'ASX', 'Outlander', 'Eclipse Cross'],
+        suzuki: ['Swift', 'Vitara', 'Celerio', 'Baleno', 'Jimny'],
+        chery: ['Tiggo 2', 'Tiggo 3', 'Tiggo 5', 'Tiggo 7', 'Tiggo 8'],
+        geely: ['Coolray', 'Emgrand', 'Azkarra', 'Okavango', 'GX3']
     };
 
     const marcaSelect = document.getElementById('marca');
     const modeloSelect = document.getElementById('modelo');
+
+    // Cargar dinámicamente las marcas
+    Object.keys(modelosPorMarca).forEach(marca => {
+        const option = document.createElement('option');
+        option.value = marca;
+        option.textContent = marca.charAt(0).toUpperCase() + marca.slice(1);
+        marcaSelect.appendChild(option);
+    });
 
     marcaSelect.addEventListener('change', () => {
         const marcaSeleccionada = marcaSelect.value;
@@ -64,11 +88,11 @@ function inicializarAplicacion() {
             modeloSelect.appendChild(option);
         });
 
-        // Habilitar o deshabilitar select modelo según disponibilidad
+        // Habilitar o deshabilitar select modelo
         modeloSelect.disabled = modelos.length === 0;
     });
 
-    // Inicialmente deshabilitar modelo hasta que se seleccione marca
+    // Inicialmente deshabilitar el select de modelos
     modeloSelect.disabled = true;
 
     // Variables
