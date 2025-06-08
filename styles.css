@@ -2,16 +2,16 @@
 /* VARIABLES Y RESET     */
 /* ==================== */
 :root {
-    --primary: #4e73df;
-    --primary-dark: #2e59d9;
-    --secondary: #858796;
-    --success: #1cc88a;
-    --info: #36b9cc;
-    --warning: #f6c23e;
-    --danger: #e74a3b;
-    --danger-hover: #c0392b;
-    --light: #f8f9fc;
-    --dark: #5a5c69;
+  --primary: #0078d4;         /* Azul brillante (frontal derecho) */
+  --primary-dark: #004eaa;    /* Azul profundo (frontal izquierdo) */
+  --secondary: #7a7f9b;       /* Gris azulado neutral */
+  --success: #1db489;         /* Verde moderno complementario */
+  --info: #00aaff;            /* Azul celeste (cara superior clara) */
+  --warning: #ffc107;         /* Amarillo intenso */
+  --danger: #e74a3b;          /* Rojo actual */
+  --danger-hover: #c0392b;    /* Rojo oscuro */
+  --light: #f4f6fb;           /* Casi blanco con tono azulado */
+  --dark: #1b2a47;            /* Azul noche intenso */
 }
 
 * {
