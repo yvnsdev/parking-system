@@ -99,11 +99,11 @@ function inicializarAplicacion() {
     let vehiculos = JSON.parse(localStorage.getItem('vehiculos')) || [];
     let configuracion = JSON.parse(localStorage.getItem('configuracion')) || {
         totalEspacios: 24,
-        tarifaPorMinuto: 30
+        tarifaPorMinuto: 30 // Cambiado de tarifaPorHora a tarifaPorMinuto
     };
 
     let totalEspacios = configuracion.totalEspacios;
-    let tarifaPorHora = configuracion.tarifaPorHora;
+    let tarifaPorMinuto = configuracion.tarifaPorMinuto; // Usar el mismo nombre
     let espacioSeleccionado = null;
 
     // Función para inicializar gráficos
@@ -349,30 +349,48 @@ function inicializarAplicacion() {
 
         if (vehiculosMostrados.length === 0) {
             const row = document.createElement('tr');
-            row.innerHTML = `<td colspan="8" style="text-align: center;">No se encontraron vehículos</td>`;
+            row.innerHTML = `<td colspan="7" style="text-align: center;">No se encontraron vehículos</td>`;
             tablaVehiculos.appendChild(row);
             return;
         }
 
+        // Definir las etiquetas para móviles
+        const labels = ['Placa', 'Marca', 'Modelo', 'Color', 'Conductor', 'Tiempo (min)', 'Estado'];
+
         vehiculosMostrados.forEach(vehiculo => {
             const row = document.createElement('tr');
             const horaEntrada = new Date(vehiculo.horaEntrada);
-            const horaSalida = vehiculo.horaSalida ? new Date(vehiculo.horaSalida) : null;
 
-            row.innerHTML = `
-                <td>${vehiculo.placa}</td>
-                <td>${vehiculo.marca}</td>
-                <td>${vehiculo.modelo}</td>
-                <td>${vehiculo.color}</td>
-                <td>${vehiculo.conductor}</td>
-                <td>${horaEntrada.toLocaleTimeString()}</td>
-                <td>${horaSalida ? horaSalida.toLocaleTimeString() : '-'}</td>
-                <td>
-                    ${vehiculo.estado === 'estacionado' ?
+            // Calcular tiempo estacionado
+            let tiempoEstacionado = '-';
+            if (vehiculo.estado === 'retirado' && vehiculo.horaSalida) {
+                const horaSalida = new Date(vehiculo.horaSalida);
+                const tiempoMs = horaSalida.getTime() - horaEntrada.getTime();
+                tiempoEstacionado = Math.round(tiempoMs / (1000 * 60)); // Convertir a minutos
+            } else if (vehiculo.estado === 'estacionado') {
+                const tiempoMs = new Date().getTime() - horaEntrada.getTime();
+                tiempoEstacionado = Math.round(tiempoMs / (1000 * 60)); // Tiempo actual en minutos
+            }
+
+            // Crear celdas con atributos data-label para móviles
+            const celdas = [
+                vehiculo.placa,
+                vehiculo.marca,
+                vehiculo.modelo,
+                vehiculo.color,
+                vehiculo.conductor,
+                tiempoEstacionado,
+                vehiculo.estado === 'estacionado' ?
                     '<span class="badge badge-success">Estacionado</span>' :
-                    '<span class="badge badge-secondary">Retirado</span>'}
-                </td>
-            `;
+                    '<span class="badge badge-secondary">Retirado</span>'
+            ];
+
+            celdas.forEach((contenido, index) => {
+                const celda = document.createElement('td');
+                celda.innerHTML = contenido;
+                celda.setAttribute('data-label', labels[index]);
+                row.appendChild(celda);
+            });
 
             tablaVehiculos.appendChild(row);
         });
@@ -498,7 +516,7 @@ function inicializarAplicacion() {
     // Función para cargar configuración
     function cargarConfiguracion() {
         document.getElementById('total-espacios').value = configuracion.totalEspacios;
-        document.getElementById('tarifa-hora').value = configuracion.tarifaPorHora;
+        document.getElementById('tarifa-hora').value = configuracion.tarifaPorMinuto; // Cambiado de tarifaPorHora
     }
 
     // Elementos del DOM
@@ -744,8 +762,8 @@ function inicializarAplicacion() {
             return;
         }
 
-        configuracion.tarifaPorHora = nuevaTarifa;
-        tarifaPorHora = nuevaTarifa;
+        configuracion.tarifaPorMinuto = nuevaTarifa; // Cambiado de tarifaPorHora a tarifaPorMinuto
+        tarifaPorMinuto = nuevaTarifa;
         localStorage.setItem('configuracion', JSON.stringify(configuracion));
         showAlert('success', `Tarifa actualizada: $${nuevaTarifa.toLocaleString('es-CL')} por minuto`);
     });

@@ -300,6 +300,11 @@ body {
     overflow-x: auto;
 }
 
+.table-responsive {
+    width: 100%;
+    overflow-x: auto;
+}
+
 table {
     width: 100%;
     border-collapse: collapse;
@@ -923,5 +928,98 @@ tr:hover {
     
     .footer-bottom {
         padding: 1rem;
+    }
+}
+
+/* ==================== */
+/* MEJORAS PARA TABLAS Y GRÁFICOS EN MÓVILES */
+/* ==================== */
+
+/* Mejoras para la tabla de vehículos */
+@media (max-width: 768px) {
+    #tabla-vehiculos {
+        display: block;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    #tabla-vehiculos thead {
+        display: none;
+    }
+    
+    #tabla-vehiculos tbody tr {
+        display: block;
+        margin-bottom: 1rem;
+        border: 1px solid #e3e6f0;
+        border-radius: 0.35rem;
+    }
+    
+    #tabla-vehiculos tbody td {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.5rem 1rem;
+        border-bottom: 1px solid #f8f9fc;
+    }
+    
+    #tabla-vehiculos tbody td::before {
+        content: attr(data-label);
+        font-weight: 600;
+        color: var(--dark);
+        margin-right: 1rem;
+        flex-shrink: 0;
+    }
+    
+    #tabla-vehiculos tbody td:last-child {
+        border-bottom: none;
+    }
+    
+    .badge {
+        margin-left: auto;
+    }
+}
+
+/* Mejoras para los gráficos */
+@media (max-width: 992px) {
+    .chart-container {
+        height: 250px;
+    }
+    
+    #reportes .chart-container {
+        margin-bottom: 1.5rem;
+    }
+    
+    #reportes .stats-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+@media (max-width: 576px) {
+    .chart-container {
+        height: 200px;
+    }
+    
+    #reportes .stats-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    #reportes .stat-card {
+        padding: 1rem;
+    }
+    
+    #reportes .stat-icon {
+        width: 40px;
+        height: 40px;
+        font-size: 1rem;
+    }
+    
+    #reportes .stat-info h3 {
+        font-size: 1.25rem;
+    }
+}
+
+@media (max-width: 768px) {
+    #tabla-vehiculos tbody td[data-label="Tiempo (min)"]::before {
+        content: "Tiempo (min)";
     }
 }

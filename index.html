@@ -196,25 +196,22 @@
                             <input type="text" id="buscar-vehiculo"
                                 placeholder="Buscar por placa, marca, modelo, color o conductor...">
                         </div>
-                        <div class="table-container">
-                            <table id="tabla-vehiculos">
-                                <thead>
-                                    <tr>
-                                        <th><i class="fas fa-id-card"></i> Placa</th>
-                                        <th><i class="fas fa-tag"></i> Marca</th>
-                                        <th><i class="fas fa-car-alt"></i> Modelo</th>
-                                        <th><i class="fas fa-palette"></i> Color</th>
-                                        <th><i class="fas fa-user"></i> Conductor</th>
-                                        <th><i class="fas fa-clock"></i> Hora Entrada</th>
-                                        <th><i class="fas fa-sign-out-alt"></i> Hora Salida</th>
-                                        <th><i class="fas fa-info-circle"></i> Estado</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <!-- Datos se llenarán con JS -->
-                                </tbody>
-                            </table>
-                        </div>
+                        <table id="tabla-vehiculos">
+                            <thead>
+                                <tr>
+                                    <th><i class="fas fa-id-card"></i> Placa</th>
+                                    <th><i class="fas fa-tag"></i> Marca</th>
+                                    <th><i class="fas fa-car-alt"></i> Modelo</th>
+                                    <th><i class="fas fa-palette"></i> Color</th>
+                                    <th><i class="fas fa-user"></i> Conductor</th>
+                                    <th><i class="fas fa-clock"></i> Tiempo (min)</th>
+                                    <th><i class="fas fa-info-circle"></i> Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Datos se llenarán con JS -->
+                            </tbody>
+                        </table>
                     </div>
                 </div>
 
@@ -264,7 +261,7 @@
                             <canvas id="ingresosChart"></canvas>
                         </div>
 
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 2rem;">
+                        <div style="display: grid; grid-template-columns: 1fr; gap: 1.5rem; margin-top: 2rem;">
                             <div class="chart-container">
                                 <canvas id="estadoVehiculosChart"></canvas>
                             </div>
