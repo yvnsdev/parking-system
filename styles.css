@@ -9,6 +9,7 @@
     --info: #36b9cc;
     --warning: #f6c23e;
     --danger: #e74a3b;
+    --danger-hover: #c0392b;
     --light: #f8f9fc;
     --dark: #5a5c69;
 }
@@ -732,6 +733,10 @@ tr:hover {
 #logout-btn {
     padding: 0.5rem 1rem;
     background-color: var(--danger);
+}
+
+#logout-btn:hover {
+    background-color: var(--danger-hover);
 }
 
 /* ==================== */
