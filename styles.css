@@ -731,6 +731,7 @@ tr:hover {
 
 #logout-btn {
     padding: 0.5rem 1rem;
+    background-color: var(--danger);
 }
 
 /* ==================== */

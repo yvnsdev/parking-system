@@ -941,3 +941,9 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('login-form').reset();
     });
 });
+
+function mostrarTabLegal(id) {
+    const secciones = document.querySelectorAll('.tab-content');
+    secciones.forEach(sec => sec.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+}
