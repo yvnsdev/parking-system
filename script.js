@@ -693,7 +693,7 @@ function inicializarAplicacion() {
             Swal.fire({
                 title: '¿Eliminar TODOS los registros?',
                 text: "Esta acción no se puede deshacer y perderás todos los datos.",
-                icon: 'warning',
+                icon: 'question',
                 showCancelButton: true,
                 confirmButtonColor: '#d33',
                 cancelButtonColor: '#3085d6',
