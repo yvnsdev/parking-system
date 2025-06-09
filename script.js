@@ -120,14 +120,8 @@ function inicializarAplicacion() {
                 labels: ['Estacionados', 'Retirados'],
                 datasets: [{
                     data: [vehiculosEstacionados, vehiculosRetirados],
-                    backgroundColor: [
-                        '#4e73df',
-                        '#858796'
-                    ],
-                    hoverBackgroundColor: [
-                        '#2e59d9',
-                        '#717384'
-                    ]
+                    backgroundColor: ['#1db489', '#7a7f9b'],
+                    hoverBackgroundColor: ['#0b7056', '#5f637a']
                 }]
             },
             options: {
@@ -160,6 +154,7 @@ function inicializarAplicacion() {
                     data: ingresosData.valores,
                     backgroundColor: '#1cc88a',
                     borderColor: '#1cc88a',
+                    hoverBackgroundColor: '#0b7056', // var(--success-hover)
                     borderWidth: 1
                 }]
             },
@@ -201,13 +196,13 @@ function inicializarAplicacion() {
                 datasets: [{
                     label: 'Entradas por hora',
                     data: horasPicoData.valores,
-                    backgroundColor: 'rgba(78, 115, 223, 0.05)',
-                    borderColor: '#4e73df',
+                    backgroundColor: 'rgba(0, 120, 212, 0.05)', // var(--primary) con opacidad
+                    borderColor: '#0078d4',                    // var(--primary)
+                    pointBackgroundColor: '#0078d4',
+                    pointHoverBackgroundColor: '#0078d4',
                     borderWidth: 2,
-                    pointBackgroundColor: '#4e73df',
                     pointBorderColor: '#fff',
                     pointHoverRadius: 5,
-                    pointHoverBackgroundColor: '#4e73df',
                     pointHoverBorderColor: '#fff',
                     pointHitRadius: 10,
                     pointBorderWidth: 2,
