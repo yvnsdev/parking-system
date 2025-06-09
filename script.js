@@ -690,34 +690,89 @@ function inicializarAplicacion() {
         const tipo = document.getElementById('tipo-eliminacion').value;
 
         if (tipo === 'todo') {
-            if (confirm('¿Está seguro que desea eliminar TODOS los registros? Esta acción no se puede deshacer.')) {
-                vehiculos = [];
-                localStorage.setItem('vehiculos', JSON.stringify(vehiculos));
-                showAlert('success', 'Todos los registros han sido eliminados');
-                actualizarTablaVehiculos();
-                generarMapaEstacionamiento();
-                actualizarEstadisticas();
-            }
-        } else if (tipo === 'salidos') {
-            vehiculos = vehiculos.filter(v => v.estado === 'estacionado');
-            localStorage.setItem('vehiculos', JSON.stringify(vehiculos));
-            showAlert('success', 'Registros de vehículos salidos eliminados');
-            actualizarTablaVehiculos();
-            generarMapaEstacionamiento();
-            actualizarEstadisticas();
-        } else if (tipo === 'antiguos') {
-            const limite = new Date();
-            limite.setDate(limite.getDate() - 30);
-            vehiculos = vehiculos.filter(v => {
-                if (v.estado === 'estacionado') return true;
-                const fechaSalida = new Date(v.horaSalida);
-                return fechaSalida > limite;
+            Swal.fire({
+                title: '¿Eliminar TODOS los registros?',
+                text: "Esta acción no se puede deshacer y perderás todos los datos.",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Sí, eliminar todo',
+                cancelButtonText: 'Cancelar',
+                backdrop: `
+                rgba(0,0,0,0.7)
+                url("/images/trash-animation.gif")
+                left top
+                no-repeat
+            `
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    vehiculos = [];
+                    localStorage.setItem('vehiculos', JSON.stringify(vehiculos));
+                    showAlert('success', 'Todos los registros han sido eliminados');
+                    actualizarTablaVehiculos();
+                    generarMapaEstacionamiento();
+                    actualizarEstadisticas();
+
+                    Swal.fire(
+                        '¡Eliminado!',
+                        'Todos los registros han sido borrados.',
+                        'success'
+                    );
+                }
             });
-            localStorage.setItem('vehiculos', JSON.stringify(vehiculos));
-            showAlert('success', 'Registros antiguos eliminados');
-            actualizarTablaVehiculos();
-            generarMapaEstacionamiento();
-            actualizarEstadisticas();
+        } else if (tipo === 'salidos') {
+            Swal.fire({
+                title: 'Eliminar vehículos salidos',
+                text: "¿Deseas eliminar solo los registros de vehículos que ya salieron?",
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Sí, eliminar',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    vehiculos = vehiculos.filter(v => v.estado === 'estacionado');
+                    localStorage.setItem('vehiculos', JSON.stringify(vehiculos));
+                    showAlert('success', 'Registros de vehículos salidos eliminados');
+                    actualizarTablaVehiculos();
+                    generarMapaEstacionamiento();
+                    actualizarEstadisticas();
+                }
+            });
+        } else if (tipo === 'antiguos') {
+            Swal.fire({
+                title: 'Eliminar registros antiguos',
+                html: "¿Deseas eliminar registros con más de <b>30 días</b> de antigüedad?<br><small>Los vehículos estacionados no serán afectados</small>",
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Sí, eliminar antiguos',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const limite = new Date();
+                    limite.setDate(limite.getDate() - 30);
+                    vehiculos = vehiculos.filter(v => {
+                        if (v.estado === 'estacionado') return true;
+                        const fechaSalida = new Date(v.horaSalida);
+                        return fechaSalida > limite;
+                    });
+                    localStorage.setItem('vehiculos', JSON.stringify(vehiculos));
+                    showAlert('success', 'Registros antiguos eliminados');
+                    actualizarTablaVehiculos();
+                    generarMapaEstacionamiento();
+                    actualizarEstadisticas();
+
+                    Swal.fire(
+                        '¡Hecho!',
+                        'Los registros antiguos han sido eliminados.',
+                        'success'
+                    );
+                }
+            });
         }
     });
 
@@ -940,7 +995,7 @@ function mostrarTabLegal(id) {
 }
 
 // Cookie Consent
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     const cookieConsent = document.getElementById('cookie-consent');
     const cookieAccept = document.getElementById('cookie-accept');
     const cookieDecline = document.getElementById('cookie-decline');
@@ -954,13 +1009,13 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Manejar aceptación de cookies
-    cookieAccept.addEventListener('click', function() {
+    cookieAccept.addEventListener('click', function () {
         localStorage.setItem('cookieConsent', 'accepted');
         cookieConsent.classList.remove('show');
     });
 
     // Manejar rechazo de cookies
-    cookieDecline.addEventListener('click', function() {
+    cookieDecline.addEventListener('click', function () {
         localStorage.setItem('cookieConsent', 'declined');
         cookieConsent.classList.remove('show');
     });
