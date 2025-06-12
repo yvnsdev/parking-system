@@ -1,8 +1,8 @@
-// Credenciales válidas (en un sistema real, esto vendría de una base de datos)
-const USUARIOS_VALIDOS = [
-    { username: 'admin@prisma.cl', password: 'password', nombre: 'Administrador' },
-    { username: 'user@prisma.cl', password: 'password', nombre: 'Usuario' }
-];
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+
+const supabaseUrl = 'https://rnsvucshdbjyihzoalts.supabase.co'
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJuc3Z1Y3NoZGJqeWloem9hbHRzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk2OTc2NjgsImV4cCI6MjA2NTI3MzY2OH0.bk5PJoXvgxbIHuN6l7cT8IuP0wBRw8zgcdggEkvjKvw'
+const supabase = createClient(supabaseUrl, supabaseKey)
 
 // Función para inicializar la aplicación después del login
 function inicializarAplicacion() {
@@ -59,7 +59,8 @@ function inicializarAplicacion() {
         mitsubishi: ['Mirage', 'Lancer', 'ASX', 'Outlander', 'Eclipse Cross'],
         suzuki: ['Swift', 'Vitara', 'Celerio', 'Baleno', 'Jimny'],
         chery: ['Tiggo 2', 'Tiggo 3', 'Tiggo 5', 'Tiggo 7', 'Tiggo 8'],
-        geely: ['Coolray', 'Emgrand', 'Azkarra', 'Okavango', 'GX3']
+        geely: ['Coolray', 'Emgrand', 'Azkarra', 'Okavango', 'GX3'],
+        otro: ['Otro']
     };
 
     const marcaSelect = document.getElementById('marca');
@@ -903,21 +904,28 @@ function inicializarAplicacion() {
 }
 
 // Manejar el formulario de login
-document.getElementById('login-form').addEventListener('submit', function (e) {
+document.getElementById('login-form').addEventListener('submit', async function (e) {
     e.preventDefault();
 
     const username = document.getElementById('username').value;
     const password = document.getElementById('password').value;
 
-    // Verificar credenciales
-    const usuarioValido = USUARIOS_VALIDOS.find(user =>
-        user.username === username && user.password === password
-    );
+    try {
+        // Verificar credenciales en Supabase
+        const { data, error } = await supabase
+            .from('usuarios')
+            .select('*')
+            .eq('username', username)
+            .eq('password', password)
+            .single();
 
-    if (usuarioValido) {
+        if (error || !data) {
+            throw new Error('Usuario o contraseña incorrectos');
+        }
+
         // Login exitoso
-        localStorage.setItem('usuarioLogueado', JSON.stringify(usuarioValido));
-        localStorage.setItem('isLoggedIn', 'true'); // Bandera adicional
+        localStorage.setItem('usuarioLogueado', JSON.stringify(data));
+        localStorage.setItem('isLoggedIn', 'true');
 
         // Ocultar login y mostrar dashboard
         document.getElementById('login-overlay').classList.add('hidden');
@@ -927,7 +935,7 @@ document.getElementById('login-form').addEventListener('submit', function (e) {
         const alert = document.createElement('div');
         alert.className = 'alert alert-success';
         alert.innerHTML = `
-            <span>Bienvenido, ${usuarioValido.nombre}</span>
+            <span>Bienvenido, ${data.nombre}</span>
             <button class="close-btn">&times;</button>
         `;
         document.body.appendChild(alert);
@@ -939,12 +947,13 @@ document.getElementById('login-form').addEventListener('submit', function (e) {
 
         // Inicializar la aplicación
         inicializarAplicacion();
-    } else {
+
+    } catch (error) {
         // Credenciales inválidas
         const alert = document.createElement('div');
         alert.className = 'alert alert-error';
         alert.innerHTML = `
-            <span>Usuario o contraseña incorrectos</span>
+            <span>${error.message}</span>
             <button class="close-btn">&times;</button>
         `;
         document.body.appendChild(alert);
@@ -957,14 +966,47 @@ document.getElementById('login-form').addEventListener('submit', function (e) {
 });
 
 // Verificar estado de login al cargar la página
-document.addEventListener('DOMContentLoaded', function () {
+document.addEventListener('DOMContentLoaded', async function () {
     const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
     const usuarioLogueado = JSON.parse(localStorage.getItem('usuarioLogueado'));
 
     if (isLoggedIn && usuarioLogueado) {
-        document.getElementById('login-overlay').classList.add('hidden');
-        document.getElementById('dashboard').classList.remove('hidden');
-        inicializarAplicacion();
+        // Verificar si el usuario aún existe en Supabase
+        try {
+            const { data, error } = await supabase
+                .from('usuarios')
+                .select('*')
+                .eq('id', usuarioLogueado.id)
+                .single();
+
+            if (error || !data) {
+                throw new Error('La sesión ha expirado');
+            }
+
+            document.getElementById('login-overlay').classList.add('hidden');
+            document.getElementById('dashboard').classList.remove('hidden');
+            inicializarAplicacion();
+        } catch (error) {
+            // Limpiar estado de login inválido
+            localStorage.removeItem('isLoggedIn');
+            localStorage.removeItem('usuarioLogueado');
+            document.getElementById('dashboard').classList.add('hidden');
+            document.getElementById('login-overlay').classList.remove('hidden');
+            
+            // Mostrar mensaje de error
+            const alert = document.createElement('div');
+            alert.className = 'alert alert-error';
+            alert.innerHTML = `
+                <span>${error.message}</span>
+                <button class="close-btn">&times;</button>
+            `;
+            document.body.appendChild(alert);
+            setTimeout(() => alert.classList.add('show'), 10);
+            setTimeout(() => {
+                alert.classList.remove('show');
+                setTimeout(() => alert.remove(), 300);
+            }, 5000);
+        }
     } else {
         // Limpiar posible estado previo inválido
         localStorage.removeItem('isLoggedIn');
@@ -980,38 +1022,5 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('dashboard').classList.add('hidden');
         document.getElementById('login-overlay').classList.remove('hidden');
         document.getElementById('login-form').reset();
-    });
-});
-
-function mostrarTabLegal(id) {
-    const secciones = document.querySelectorAll('.tab-content');
-    secciones.forEach(sec => sec.classList.remove('active'));
-    document.getElementById(id).classList.add('active');
-}
-
-// Cookie Consent
-document.addEventListener('DOMContentLoaded', function () {
-    const cookieConsent = document.getElementById('cookie-consent');
-    const cookieAccept = document.getElementById('cookie-accept');
-    const cookieDecline = document.getElementById('cookie-decline');
-
-    // Verificar si ya se ha dado consentimiento
-    if (!localStorage.getItem('cookieConsent')) {
-        // Mostrar el banner después de 1 segundo
-        setTimeout(() => {
-            cookieConsent.classList.add('show');
-        }, 500);
-    }
-
-    // Manejar aceptación de cookies
-    cookieAccept.addEventListener('click', function () {
-        localStorage.setItem('cookieConsent', 'accepted');
-        cookieConsent.classList.remove('show');
-    });
-
-    // Manejar rechazo de cookies
-    cookieDecline.addEventListener('click', function () {
-        localStorage.setItem('cookieConsent', 'declined');
-        cookieConsent.classList.remove('show');
     });
 });
