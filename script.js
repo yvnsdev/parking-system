@@ -487,6 +487,7 @@ async function inicializarAplicacion() {
     function showAlert(type, message) {
         const alert = document.createElement('div');
         alert.className = `alert alert-${type}`;
+        alert.style.zIndex = '9999';
         alert.innerHTML = `
             <span>${message}</span>
             <button class="close-btn">&times;</button>
