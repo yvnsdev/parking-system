@@ -660,6 +660,17 @@ tr:hover {
     box-shadow: 0 0 0 0.2rem rgba(78, 115, 223, 0.25);
 }
 
+.login-error {
+    margin-top: 10px;
+    color: #e74c3c; /* rojo */
+    font-size: 0.9em;
+    margin-bottom: 1rem;
+}
+
+.hidden {
+    display: none;
+}
+
 /* ==================== */
 /* FOOTER               */
 /* ==================== */

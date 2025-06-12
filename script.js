@@ -1130,6 +1130,7 @@ document.getElementById('login-form').addEventListener('submit', async function 
         // Ocultar login y mostrar dashboard
         document.getElementById('login-overlay').classList.add('hidden');
         document.getElementById('dashboard').classList.remove('hidden');
+        document.getElementById('login-error').classList.add('hidden');
 
         // Mostrar mensaje de bienvenida
         const alert = document.createElement('div');
@@ -1149,19 +1150,10 @@ document.getElementById('login-form').addEventListener('submit', async function 
         inicializarAplicacion();
 
     } catch (error) {
-        // Credenciales inválidas
-        const alert = document.createElement('div');
-        alert.className = 'alert alert-error';
-        alert.innerHTML = `
-            <span>${error.message}</span>
-            <button class="close-btn">&times;</button>
-        `;
-        document.body.appendChild(alert);
-        setTimeout(() => alert.classList.add('show'), 10);
-        setTimeout(() => {
-            alert.classList.remove('show');
-            setTimeout(() => alert.remove(), 300);
-        }, 5000);
+        // Mostrar error en el formulario
+        const errorMsg = document.getElementById('login-error');
+        errorMsg.textContent = error.message;
+        errorMsg.classList.remove('hidden');
     }
 });
 
