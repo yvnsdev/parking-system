@@ -5,7 +5,7 @@ const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS
 const supabase = createClient(supabaseUrl, supabaseKey)
 
 // Función para inicializar la aplicación después del login
-function inicializarAplicacion() {
+async function inicializarAplicacion() {
     const placaInput = document.getElementById('placa');
 
     placaInput.addEventListener('input', () => {
@@ -97,14 +97,52 @@ function inicializarAplicacion() {
     modeloSelect.disabled = true;
 
     // Variables
-    let vehiculos = JSON.parse(localStorage.getItem('vehiculos')) || [];
-    let configuracion = JSON.parse(localStorage.getItem('configuracion')) || {
+    let vehiculos = [];
+    let configuracion = {
         totalEspacios: 24,
-        tarifaPorMinuto: 30 // Cambiado de tarifaPorHora a tarifaPorMinuto
+        tarifaPorMinuto: 30
     };
 
+    // Cargar datos iniciales desde Supabase
+    try {
+        // Cargar vehículos
+        const { data: vehiculosData, error: vehiculosError } = await supabase
+            .from('vehiculos')
+            .select('*');
+        
+        if (!vehiculosError) {
+            vehiculos = vehiculosData || [];
+        } else {
+            console.error('Error al cargar vehículos:', vehiculosError);
+            showAlert('error', 'Error al cargar los vehículos');
+        }
+
+        // Cargar configuración
+        const { data: configData, error: configError } = await supabase
+            .from('configuracion')
+            .select('*')
+            .single();
+        
+        if (!configError && configData) {
+            configuracion = configData;
+        } else {
+            // Si no hay configuración, crear una por defecto
+            const { error: insertError } = await supabase
+                .from('configuracion')
+                .insert([configuracion]);
+            
+            if (insertError) {
+                console.error('Error al crear configuración inicial:', insertError);
+                showAlert('error', 'Error al inicializar configuración');
+            }
+        }
+    } catch (error) {
+        console.error('Error al cargar datos iniciales:', error);
+        showAlert('error', 'Error al cargar los datos iniciales');
+    }
+
     let totalEspacios = configuracion.totalEspacios;
-    let tarifaPorMinuto = configuracion.tarifaPorMinuto; // Usar el mismo nombre
+    let tarifaPorMinuto = configuracion.tarifaPorMinuto;
     let espacioSeleccionado = null;
 
     // Función para inicializar gráficos
@@ -155,7 +193,7 @@ function inicializarAplicacion() {
                     data: ingresosData.valores,
                     backgroundColor: '#1cc88a',
                     borderColor: '#1cc88a',
-                    hoverBackgroundColor: '#0b7056', // var(--success-hover)
+                    hoverBackgroundColor: '#0b7056',
                     borderWidth: 1
                 }]
             },
@@ -197,8 +235,8 @@ function inicializarAplicacion() {
                 datasets: [{
                     label: 'Entradas por hora',
                     data: horasPicoData.valores,
-                    backgroundColor: 'rgba(0, 120, 212, 0.05)', // var(--primary) con opacidad
-                    borderColor: '#0078d4',                    // var(--primary)
+                    backgroundColor: 'rgba(0, 120, 212, 0.05)',
+                    borderColor: '#0078d4',
                     pointBackgroundColor: '#0078d4',
                     pointHoverBackgroundColor: '#0078d4',
                     borderWidth: 2,
@@ -475,10 +513,48 @@ function inicializarAplicacion() {
         }, 5000);
     }
 
-    // Guardar en localStorage
-    function guardarEnLocalStorage() {
-        localStorage.setItem('vehiculos', JSON.stringify(vehiculos));
-        localStorage.setItem('configuracion', JSON.stringify(configuracion));
+    // Guardar vehículos en Supabase
+    async function guardarVehiculos() {
+        try {
+            // Primero eliminamos todos los registros existentes (esto es simplificado)
+            const { error: deleteError } = await supabase
+                .from('vehiculos')
+                .delete()
+                .neq('id', 0); // Esto eliminará todos los registros
+            
+            if (deleteError) throw deleteError;
+
+            // Luego insertamos todos los vehículos actuales
+            const { error: insertError } = await supabase
+                .from('vehiculos')
+                .insert(vehiculos);
+            
+            if (insertError) throw insertError;
+            
+            return true;
+        } catch (error) {
+            console.error('Error al guardar vehículos:', error);
+            showAlert('error', 'Error al guardar los vehículos');
+            return false;
+        }
+    }
+
+    // Guardar configuración en Supabase
+    async function guardarConfiguracion() {
+        try {
+            const { error } = await supabase
+                .from('configuracion')
+                .update(configuracion)
+                .eq('id', 1); // Asumiendo que hay solo un registro de configuración con ID 1
+            
+            if (error) throw error;
+            
+            return true;
+        } catch (error) {
+            console.error('Error al guardar configuración:', error);
+            showAlert('error', 'Error al guardar la configuración');
+            return false;
+        }
     }
 
     // Función para actualizar estadísticas
@@ -512,7 +588,7 @@ function inicializarAplicacion() {
     // Función para cargar configuración
     function cargarConfiguracion() {
         document.getElementById('total-espacios').value = configuracion.totalEspacios;
-        document.getElementById('tarifa-hora').value = configuracion.tarifaPorMinuto; // Cambiado de tarifaPorHora
+        document.getElementById('tarifa-hora').value = configuracion.tarifaPorMinuto;
     }
 
     // Elementos del DOM
@@ -569,7 +645,7 @@ function inicializarAplicacion() {
     });
 
     // Registrar entrada de vehículo
-    formEntrada.addEventListener('submit', function (e) {
+    formEntrada.addEventListener('submit', async function (e) {
         e.preventDefault();
 
         if (!espacioSeleccionado) {
@@ -606,17 +682,38 @@ function inicializarAplicacion() {
             conductor,
             espacio: espacioSeleccionado,
             horaEntrada: horaEntrada.getTime(),
-            estado: 'estacionado'
+            estado: 'estacionado',
+            horaSalida: null,
+            tiempoEstacionadoMinutos: null,
+            totalPagar: null,
+            pagado: null
         };
 
-        vehiculos.push(vehiculo);
-        guardarEnLocalStorage();
+        try {
+            // Insertar el nuevo vehículo en Supabase
+            const { data, error } = await supabase
+                .from('vehiculos')
+                .insert([vehiculo])
+                .select();
+            
+            if (error) throw error;
 
-        showAlert('success', `Vehículo con placa ${placa} registrado en espacio ${espacioSeleccionado}.`);
-        formEntrada.reset();
-        espacioSeleccionado = null;
-        generarMapaEstacionamiento();
-        actualizarEstadisticas();
+            // Agregar el vehículo a la lista local con el ID generado por Supabase
+            if (data && data.length > 0) {
+                vehiculos.push(data[0]);
+            } else {
+                vehiculos.push(vehiculo);
+            }
+
+            showAlert('success', `Vehículo con placa ${placa} registrado en espacio ${espacioSeleccionado}.`);
+            formEntrada.reset();
+            espacioSeleccionado = null;
+            generarMapaEstacionamiento();
+            actualizarEstadisticas();
+        } catch (error) {
+            console.error('Error al registrar vehículo:', error);
+            showAlert('error', 'Error al registrar el vehículo');
+        }
     });
 
     // Buscar vehículo para salida
@@ -647,7 +744,7 @@ function inicializarAplicacion() {
     });
 
     // Registrar salida de vehículo
-    formSalida.addEventListener('submit', function (e) {
+    formSalida.addEventListener('submit', async function (e) {
         e.preventDefault();
 
         const placa = placaSalidaInput.value.toUpperCase();
@@ -662,27 +759,45 @@ function inicializarAplicacion() {
         const horaSalida = new Date();
         const horaEntrada = new Date(vehiculos[vehiculoIndex].horaEntrada);
         const tiempoEstacionadoMs = horaSalida.getTime() - horaEntrada.getTime();
-        const tiempoEstacionadoMinutos = Math.ceil(tiempoEstacionadoMs / (1000 * 60)); // Redondeamos hacia arriba
+        const tiempoEstacionadoMinutos = Math.ceil(tiempoEstacionadoMs / (1000 * 60));
         const totalPagar = tiempoEstacionadoMinutos * configuracion.tarifaPorMinuto;
 
-        // Actualizar vehículo
+        // Actualizar vehículo localmente
         vehiculos[vehiculoIndex].horaSalida = horaSalida.getTime();
         vehiculos[vehiculoIndex].tiempoEstacionadoMinutos = tiempoEstacionadoMinutos;
         vehiculos[vehiculoIndex].totalPagar = totalPagar;
         vehiculos[vehiculoIndex].pagado = pagado === 'si';
         vehiculos[vehiculoIndex].estado = 'retirado';
-        guardarEnLocalStorage();
 
-        showAlert('success', `Salida registrada para placa ${placa}. Total: $${totalPagar.toLocaleString('es-CL')}`);
-        formSalida.reset();
-        previewPago.classList.add('hidden');
-        actualizarTablaVehiculos();
-        actualizarEstadisticas();
-        generarMapaEstacionamiento();
+        try {
+            // Actualizar el vehículo en Supabase
+            const { error } = await supabase
+                .from('vehiculos')
+                .update({
+                    horaSalida: horaSalida.getTime(),
+                    tiempoEstacionadoMinutos: tiempoEstacionadoMinutos,
+                    totalPagar: totalPagar,
+                    pagado: pagado === 'si',
+                    estado: 'retirado'
+                })
+                .eq('id', vehiculos[vehiculoIndex].id);
+            
+            if (error) throw error;
+
+            showAlert('success', `Salida registrada para placa ${placa}. Total: $${totalPagar.toLocaleString('es-CL')}`);
+            formSalida.reset();
+            previewPago.classList.add('hidden');
+            actualizarTablaVehiculos();
+            actualizarEstadisticas();
+            generarMapaEstacionamiento();
+        } catch (error) {
+            console.error('Error al registrar salida:', error);
+            showAlert('error', 'Error al registrar la salida del vehículo');
+        }
     });
 
     // Manejo de eliminación de datos
-    document.getElementById('btn-eliminar').addEventListener('click', function () {
+    document.getElementById('btn-eliminar').addEventListener('click', async function () {
         const tipo = document.getElementById('tipo-eliminacion').value;
 
         if (tipo === 'todo') {
@@ -701,20 +816,32 @@ function inicializarAplicacion() {
                 left top
                 no-repeat
             `
-            }).then((result) => {
+            }).then(async (result) => {
                 if (result.isConfirmed) {
-                    vehiculos = [];
-                    localStorage.setItem('vehiculos', JSON.stringify(vehiculos));
-                    showAlert('success', 'Todos los registros han sido eliminados');
-                    actualizarTablaVehiculos();
-                    generarMapaEstacionamiento();
-                    actualizarEstadisticas();
+                    try {
+                        // Eliminar todos los vehículos en Supabase
+                        const { error } = await supabase
+                            .from('vehiculos')
+                            .delete()
+                            .neq('id', 0);
+                        
+                        if (error) throw error;
 
-                    Swal.fire(
-                        '¡Eliminado!',
-                        'Todos los registros han sido borrados.',
-                        'success'
-                    );
+                        vehiculos = [];
+                        showAlert('success', 'Todos los registros han sido eliminados');
+                        actualizarTablaVehiculos();
+                        generarMapaEstacionamiento();
+                        actualizarEstadisticas();
+
+                        Swal.fire(
+                            '¡Eliminado!',
+                            'Todos los registros han sido borrados.',
+                            'success'
+                        );
+                    } catch (error) {
+                        console.error('Error al eliminar registros:', error);
+                        showAlert('error', 'Error al eliminar los registros');
+                    }
                 }
             });
         } else if (tipo === 'salidos') {
@@ -727,14 +854,34 @@ function inicializarAplicacion() {
                 cancelButtonColor: '#3085d6',
                 confirmButtonText: 'Sí, eliminar',
                 cancelButtonText: 'Cancelar'
-            }).then((result) => {
+            }).then(async (result) => {
                 if (result.isConfirmed) {
-                    vehiculos = vehiculos.filter(v => v.estado === 'estacionado');
-                    localStorage.setItem('vehiculos', JSON.stringify(vehiculos));
-                    showAlert('success', 'Registros de vehículos salidos eliminados');
-                    actualizarTablaVehiculos();
-                    generarMapaEstacionamiento();
-                    actualizarEstadisticas();
+                    try {
+                        // Obtener IDs de vehículos a eliminar
+                        const idsAEliminar = vehiculos
+                            .filter(v => v.estado === 'retirado')
+                            .map(v => v.id);
+
+                        // Eliminar en Supabase
+                        if (idsAEliminar.length > 0) {
+                            const { error } = await supabase
+                                .from('vehiculos')
+                                .delete()
+                                .in('id', idsAEliminar);
+                            
+                            if (error) throw error;
+                        }
+
+                        // Actualizar lista local
+                        vehiculos = vehiculos.filter(v => v.estado === 'estacionado');
+                        showAlert('success', 'Registros de vehículos salidos eliminados');
+                        actualizarTablaVehiculos();
+                        generarMapaEstacionamiento();
+                        actualizarEstadisticas();
+                    } catch (error) {
+                        console.error('Error al eliminar vehículos salidos:', error);
+                        showAlert('error', 'Error al eliminar vehículos salidos');
+                    }
                 }
             });
         } else if (tipo === 'antiguos') {
@@ -747,33 +894,59 @@ function inicializarAplicacion() {
                 cancelButtonColor: '#3085d6',
                 confirmButtonText: 'Sí, eliminar antiguos',
                 cancelButtonText: 'Cancelar'
-            }).then((result) => {
+            }).then(async (result) => {
                 if (result.isConfirmed) {
-                    const limite = new Date();
-                    limite.setDate(limite.getDate() - 30);
-                    vehiculos = vehiculos.filter(v => {
-                        if (v.estado === 'estacionado') return true;
-                        const fechaSalida = new Date(v.horaSalida);
-                        return fechaSalida > limite;
-                    });
-                    localStorage.setItem('vehiculos', JSON.stringify(vehiculos));
-                    showAlert('success', 'Registros antiguos eliminados');
-                    actualizarTablaVehiculos();
-                    generarMapaEstacionamiento();
-                    actualizarEstadisticas();
+                    try {
+                        const limite = new Date();
+                        limite.setDate(limite.getDate() - 30);
 
-                    Swal.fire(
-                        '¡Hecho!',
-                        'Los registros antiguos han sido eliminados.',
-                        'success'
-                    );
+                        // Obtener IDs de vehículos a eliminar
+                        const idsAEliminar = vehiculos
+                            .filter(v => {
+                                if (v.estado === 'estacionado') return false;
+                                const fechaSalida = new Date(v.horaSalida);
+                                return fechaSalida <= limite;
+                            })
+                            .map(v => v.id);
+
+                        // Eliminar en Supabase
+                        if (idsAEliminar.length > 0) {
+                            const { error } = await supabase
+                                .from('vehiculos')
+                                .delete()
+                                .in('id', idsAEliminar);
+                            
+                            if (error) throw error;
+                        }
+
+                        // Actualizar lista local
+                        vehiculos = vehiculos.filter(v => {
+                            if (v.estado === 'estacionado') return true;
+                            const fechaSalida = new Date(v.horaSalida);
+                            return fechaSalida > limite;
+                        });
+
+                        showAlert('success', 'Registros antiguos eliminados');
+                        actualizarTablaVehiculos();
+                        generarMapaEstacionamiento();
+                        actualizarEstadisticas();
+
+                        Swal.fire(
+                            '¡Hecho!',
+                            'Los registros antiguos han sido eliminados.',
+                            'success'
+                        );
+                    } catch (error) {
+                        console.error('Error al eliminar registros antiguos:', error);
+                        showAlert('error', 'Error al eliminar registros antiguos');
+                    }
                 }
             });
         }
     });
 
     // Configuración de espacios
-    document.getElementById('btn-guardar-espacios').addEventListener('click', function () {
+    document.getElementById('btn-guardar-espacios').addEventListener('click', async function () {
         const nuevosEspacios = parseInt(document.getElementById('total-espacios').value);
 
         if (nuevosEspacios < 1) {
@@ -790,13 +963,26 @@ function inicializarAplicacion() {
 
         configuracion.totalEspacios = nuevosEspacios;
         totalEspacios = nuevosEspacios;
-        localStorage.setItem('configuracion', JSON.stringify(configuracion));
-        showAlert('success', `Configuración guardada: ${nuevosEspacios} espacios totales`);
-        generarMapaEstacionamiento();
+
+        try {
+            // Actualizar configuración en Supabase
+            const { error } = await supabase
+                .from('configuracion')
+                .update({ totalEspacios: nuevosEspacios })
+                .eq('id', 1);
+            
+            if (error) throw error;
+
+            showAlert('success', `Configuración guardada: ${nuevosEspacios} espacios totales`);
+            generarMapaEstacionamiento();
+        } catch (error) {
+            console.error('Error al actualizar configuración de espacios:', error);
+            showAlert('error', 'Error al guardar la configuración de espacios');
+        }
     });
 
     // Configuración de tarifa
-    document.getElementById('btn-guardar-tarifa').addEventListener('click', function () {
+    document.getElementById('btn-guardar-tarifa').addEventListener('click', async function () {
         const nuevaTarifa = parseFloat(document.getElementById('tarifa-hora').value);
 
         if (nuevaTarifa <= 0) {
@@ -804,10 +990,23 @@ function inicializarAplicacion() {
             return;
         }
 
-        configuracion.tarifaPorMinuto = nuevaTarifa; // Cambiado de tarifaPorHora a tarifaPorMinuto
+        configuracion.tarifaPorMinuto = nuevaTarifa;
         tarifaPorMinuto = nuevaTarifa;
-        localStorage.setItem('configuracion', JSON.stringify(configuracion));
-        showAlert('success', `Tarifa actualizada: $${nuevaTarifa.toLocaleString('es-CL')} por minuto`);
+
+        try {
+            // Actualizar configuración en Supabase
+            const { error } = await supabase
+                .from('configuracion')
+                .update({ tarifaPorMinuto: nuevaTarifa })
+                .eq('id', 1);
+            
+            if (error) throw error;
+
+            showAlert('success', `Tarifa actualizada: $${nuevaTarifa.toLocaleString('es-CL')} por minuto`);
+        } catch (error) {
+            console.error('Error al actualizar tarifa:', error);
+            showAlert('error', 'Error al actualizar la tarifa');
+        }
     });
 
     // Inicializar
