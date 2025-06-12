@@ -1,7 +1,7 @@
 // Credenciales válidas (en un sistema real, esto vendría de una base de datos)
 const USUARIOS_VALIDOS = [
-    { username: 'admin@prisma.cl', password: 'prisma2025', nombre: 'Administrador' },
-    { username: 'user@prisma.cl', password: 'prisma2025', nombre: 'Usuario' }
+    { username: 'admin@prisma.cl', password: 'password', nombre: 'Administrador' },
+    { username: 'user@prisma.cl', password: 'password', nombre: 'Usuario' }
 ];
 
 // Función para inicializar la aplicación después del login
