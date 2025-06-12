@@ -929,7 +929,6 @@ async function inicializarAplicacion() {
                 cancelButtonText: 'Cancelar',
                 backdrop: `
                 rgba(0,0,0,0.7)
-                url("/images/trash-animation.gif")
                 left top
                 no-repeat
             `
